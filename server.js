@@ -8,8 +8,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI;
 
+const path = require("path");
+app.use(express.static(path.join(__dirname, "public")));
+
 app.use(cors());
 app.use(express.json());
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
 
 if (!MONGO_URI) {
   console.error("Erro: MONGO_URI não encontrada no arquivo .env");
