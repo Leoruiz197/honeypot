@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Honeypot Awareness</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Courier New", monospace;
+      background: #050505;
+      color: #00ff66;
+    }
+
+    header {
+      padding: 40px;
+      text-align: center;
+      background: linear-gradient(180deg, #001a0a, #050505);
+      border-bottom: 1px solid #00ff66;
+    }
+
+    h1 {
+      font-size: 42px;
+      text-shadow: 0 0 10px #00ff66;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      padding: 30px;
+    }
+
+    .card {
+      border: 1px solid #00ff66;
+      padding: 25px;
+      margin-bottom: 25px;
+      background: rgba(0, 255, 102, 0.05);
+      box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+    }
+
+    .alerta {
+      color: #ff3333;
+      text-shadow: 0 0 8px #ff3333;
+    }
+
+    pre {
+      background: #111;
+      color: #00ff66;
+      padding: 20px;
+      overflow-x: auto;
+      border-left: 4px solid #00ff66;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      border-top: 1px solid #00ff66;
+      color: #888;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>HONEYPOT DETECTED</h1>
+    <p>Simulação educativa de coleta de dados</p>
+  </header>
+
+  <main class="container">
+
+    <section class="card">
+      <h2 class="alerta">ATENÇÃO</h2>
+      <p>
+        Esta página demonstra como um site pode coletar informações do navegador,
+        incluindo IP externo via serviço terceiro e localização mediante permissão.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Dados capturados</h2>
+      <pre id="dados">Coletando informações...</pre>
+    </section>
+
+  </main>
+
+  <footer>
+    Demonstração educacional de segurança cibernética
+  </footer>
+
+  <script>
+    const elementoDados = document.getElementById("dados");
+
+    const API_BACKEND = "http://localhost:3000/capturas";
+
+    const dados = {
+      navegador: {
+        userAgent: navigator.userAgent,
+        appName: navigator.appName,
+        appVersion: navigator.appVersion,
+        platform: navigator.platform,
+        vendor: navigator.vendor,
+        language: navigator.language,
+        languages: navigator.languages,
+        cookies: navigator.cookieEnabled,
+        online: navigator.onLine,
+        doNotTrack: navigator.doNotTrack
+      },
+
+      dispositivo: {
+        larguraTela: screen.width,
+        alturaTela: screen.height,
+        larguraDisponivel: screen.availWidth,
+        alturaDisponivel: screen.availHeight,
+        profundidadeCor: screen.colorDepth,
+        pixelRatio: window.devicePixelRatio,
+        memoriaGB: navigator.deviceMemory || "N/A",
+        cpuCores: navigator.hardwareConcurrency || "N/A",
+        touchPoints: navigator.maxTouchPoints
+      },
+
+      janela: {
+        larguraInterna: window.innerWidth,
+        alturaInterna: window.innerHeight,
+        larguraExterna: window.outerWidth,
+        alturaExterna: window.outerHeight
+      },
+
+      sistema: {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        dataHora: new Date().toString(),
+        timestamp: Date.now()
+      },
+
+      conexao: {
+        tipo: navigator.connection ? navigator.connection.effectiveType : "N/A",
+        velocidadeMbps: navigator.connection ? navigator.connection.downlink : "N/A",
+        economiaDados: navigator.connection ? navigator.connection.saveData : "N/A"
+      },
+
+      rede: {
+        ipExterno: "Buscando..."
+      },
+
+      localizacao: {
+        status: "Solicitando..."
+      },
+
+      salvamento: {
+        status: "Aguardando coleta dos dados..."
+      }
+    };
+
+    function atualizarTela() {
+      elementoDados.textContent = JSON.stringify(dados, null, 2);
+    }
+
+    async function salvarCaptura() {
+      dados.salvamento = {
+        status: "Salvando no MongoDB...",
+        dataHoraEnvio: new Date().toString()
+      };
+
+      atualizarTela();
+
+      try {
+        const resposta = await fetch(API_BACKEND, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(dados)
+        });
+
+        if (!resposta.ok) {
+          throw new Error("Erro HTTP: " + resposta.status);
+        }
+
+        const resultado = await resposta.json();
+
+        dados.salvamento = {
+          status: "Salvo com sucesso",
+          idMongoDB: resultado.id || "ID não retornado",
+          dataHoraEnvio: new Date().toString()
+        };
+
+        atualizarTela();
+        console.log("Dados salvos no MongoDB:", resultado);
+
+      } catch (erro) {
+        dados.salvamento = {
+          status: "Erro ao salvar no MongoDB",
+          mensagem: erro.message,
+          dataHoraErro: new Date().toString()
+        };
+
+        atualizarTela();
+        console.error("Erro ao salvar:", erro);
+      }
+    }
+
+    function capturarIP() {
+      return fetch("https://api.ipify.org?format=json")
+        .then(res => res.json())
+        .then(data => {
+          dados.rede.ipExterno = data.ip;
+          atualizarTela();
+        })
+        .catch(() => {
+          dados.rede.ipExterno = "Erro ao obter";
+          atualizarTela();
+        });
+    }
+
+    function capturarLocalizacao() {
+      return new Promise((resolve) => {
+        if (!("geolocation" in navigator)) {
+          dados.localizacao = {
+            status: "Não suportado"
+          };
+
+          atualizarTela();
+          resolve();
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          function(posicao) {
+            dados.localizacao = {
+              status: "Permitida",
+              latitude: posicao.coords.latitude,
+              longitude: posicao.coords.longitude,
+              precisaoMetros: posicao.coords.accuracy,
+              altitude: posicao.coords.altitude,
+              velocidade: posicao.coords.speed,
+              direcao: posicao.coords.heading
+            };
+
+            atualizarTela();
+            resolve();
+          },
+
+          function(erro) {
+            dados.localizacao = {
+              status: "Negada ou indisponível",
+              codigoErro: erro.code,
+              mensagem: erro.message
+            };
+
+            atualizarTela();
+            resolve();
+          }
+        );
+      });
+    }
+
+    async function iniciarCaptura() {
+      atualizarTela();
+
+      await Promise.all([
+        capturarIP(),
+        capturarLocalizacao()
+      ]);
+
+      await salvarCaptura();
+    }
+
+    iniciarCaptura();
+  </script>
+
+</body>
+</html>
