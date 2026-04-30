@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Admin - Capturas</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: "Courier New", monospace;
+      background: #050505;
+      color: #00ff66;
+    }
+
+    header {
+      padding: 30px;
+      text-align: center;
+      border-bottom: 1px solid #00ff66;
+      background: linear-gradient(180deg, #001a0a, #050505);
+    }
+
+    h1 {
+      text-shadow: 0 0 10px #00ff66;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 30px;
+    }
+
+    .captura {
+      border: 1px solid #00ff66;
+      padding: 20px;
+      margin-bottom: 20px;
+      background: rgba(0, 255, 102, 0.05);
+      box-shadow: 0 0 10px rgba(0, 255, 102, 0.2);
+    }
+
+    .alerta {
+      color: #ff3333;
+    }
+
+    pre {
+      background: #111;
+      padding: 15px;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      border-left: 4px solid #00ff66;
+    }
+
+    button, a.btn {
+      display: inline-block;
+      background: #00ff66;
+      color: #000;
+      border: none;
+      padding: 10px 15px;
+      margin-top: 10px;
+      font-weight: bold;
+      text-decoration: none;
+      cursor: pointer;
+      font-family: "Courier New", monospace;
+    }
+
+    button:hover, a.btn:hover {
+      background: #00cc55;
+      box-shadow: 0 0 10px #00ff66;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>ADMIN - CAPTURAS</h1>
+    <p>Registros salvos no MongoDB</p>
+  </header>
+
+  <main class="container">
+    <button onclick="carregarCapturas()">Atualizar capturas</button>
+    <div id="lista"></div>
+  </main>
+
+  <script>
+    const lista = document.getElementById("lista");
+
+    async function carregarCapturas() {
+      lista.innerHTML = "<p>Carregando capturas...</p>";
+
+      try {
+        const resposta = await fetch("/capturas");
+
+        if (!resposta.ok) {
+          throw new Error("Erro HTTP: " + resposta.status);
+        }
+
+        const capturas = await resposta.json();
+
+        if (capturas.length === 0) {
+          lista.innerHTML = "<p>Nenhuma captura encontrada.</p>";
+          return;
+        }
+
+        lista.innerHTML = "";
+
+        capturas.forEach((captura) => {
+          const dados = captura.dados || {};
+          const localizacao = dados.localizacao || {};
+
+          let botaoMapa = "";
+
+          if (
+            localizacao.status === "Permitida" &&
+            localizacao.latitude &&
+            localizacao.longitude
+          ) {
+            const urlMapa = `https://www.google.com/maps?q=${localizacao.latitude},${localizacao.longitude}`;
+
+            botaoMapa = `
+              <a class="btn" href="${urlMapa}" target="_blank">
+                Abrir no Google Maps
+              </a>
+            `;
+          } else {
+            botaoMapa = `
+              <p class="alerta">Localização não permitida ou indisponível.</p>
+            `;
+          }
+
+          const div = document.createElement("div");
+          div.className = "captura";
+
+          div.innerHTML = `
+            <h2>Captura</h2>
+            <p><strong>ID:</strong> ${captura._id}</p>
+            <p><strong>Criado em:</strong> ${new Date(captura.criadoEm).toLocaleString("pt-BR")}</p>
+
+            ${botaoMapa}
+
+            <h3>Dados completos</h3>
+            <pre>${JSON.stringify(dados, null, 2)}</pre>
+          `;
+
+          lista.appendChild(div);
+        });
+
+      } catch (erro) {
+        lista.innerHTML = `
+          <p class="alerta">Erro ao carregar capturas: ${erro.message}</p>
+        `;
+      }
+    }
+
+    carregarCapturas();
+  </script>
+
+</body>
+</html>

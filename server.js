@@ -18,6 +18,10 @@ app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin.html"));
+});
+
 if (!MONGO_URI) {
   console.error("Erro: MONGO_URI não encontrada no arquivo .env");
   process.exit(1);
@@ -73,6 +77,21 @@ app.post("/capturas", async (req, res) => {
   } catch (erro) {
     res.status(500).json({
       mensagem: "Erro ao salvar captura",
+      erro: erro.message
+    });
+  }
+});
+
+app.get("/capturas", async (req, res) => {
+  try {
+    const capturas = await Captura.find()
+      .sort({ criadoEm: -1 })
+      .limit(100);
+
+    res.json(capturas);
+  } catch (erro) {
+    res.status(500).json({
+      mensagem: "Erro ao buscar capturas",
       erro: erro.message
     });
   }
